@@ -13,6 +13,9 @@ dist/
 build/
 .eggs/
 
+# Internal docs (strategy, application, operator framework)
+docs/
+
 # Data (large files — regenerate with `python -m src.cli ingest`)
 data/docs/
 data/index/
