@@ -4,6 +4,8 @@ RC Dev CLI — entry point for all agent commands.
 Usage:
   python -m src.cli ingest
   python -m src.cli draft --channel twitter --topic "your topic"
+  python -m src.cli experiment --title "..." --hypothesis "..." --channel twitter
+  python -m src.cli feedback --lookback 7
   python -m src.cli setup-notion
   python -m src.cli portfolio
 """
@@ -251,6 +253,126 @@ def portfolio(no_notion):
         click.echo(f"  ✓ Saved: {out_path}")
 
     click.echo(f"\n✓ Portfolio complete. {len(PORTFOLIO_BRIEFS)} samples in portfolio/")
+
+
+# ─────────────────────────────────────────────
+# EXPERIMENT: Log a growth experiment
+# ─────────────────────────────────────────────
+VALID_CONTENT_TYPES = ["A/B Test", "SEO Content", "Community Campaign", "Paywall Experiment"]
+VALID_EXPERIMENT_STATUSES = ["Planned", "Running", "Complete", "Cancelled"]
+
+
+@cli.command()
+@click.option("--title", required=True, help="Experiment name")
+@click.option("--hypothesis", required=True, help="What you expect to happen")
+@click.option(
+    "--channel",
+    required=True,
+    type=click.Choice(VALID_CHANNELS),
+    help="Primary channel for this experiment",
+)
+@click.option(
+    "--content-type",
+    "content_type",
+    default="A/B Test",
+    type=click.Choice(VALID_CONTENT_TYPES),
+    help="Type of experiment (default: A/B Test)",
+)
+@click.option(
+    "--status",
+    default="Planned",
+    type=click.Choice(VALID_EXPERIMENT_STATUSES),
+    help="Experiment status (default: Planned)",
+)
+@click.option("--results", default="", help="Results (if experiment is complete)")
+@click.option("--learnings", default="", help="Key learnings from this experiment")
+@click.option("--draft-id", "draft_id", default="", help="Associated draft ID (optional)")
+@click.option("--no-notion", is_flag=True, help="Skip pushing to Notion")
+def experiment(title, hypothesis, channel, content_type, status, results, learnings, draft_id, no_notion):
+    """Log a growth experiment to the Notion experiments database."""
+    from src.pipeline import notion_experiments, logger
+    from datetime import datetime, timezone
+
+    start_date = datetime.now(timezone.utc).date().isoformat()
+
+    exp = {
+        "title": title,
+        "hypothesis": hypothesis,
+        "channel": channel,
+        "content_type": content_type,
+        "status": status,
+        "start_date": start_date,
+        "results": results,
+        "learnings": learnings,
+        "draft_id": draft_id,
+    }
+
+    click.echo(f"\nLogging experiment: \"{title}\"")
+    click.echo("─" * 60)
+    click.echo(f"Channel:      {channel}")
+    click.echo(f"Type:         {content_type}")
+    click.echo(f"Status:       {status}")
+    click.echo(f"Hypothesis:   {hypothesis}")
+
+    if not no_notion:
+        click.echo("\nPushing to Notion experiments database...")
+        notion_url = notion_experiments.push_experiment(exp)
+        if notion_url:
+            click.echo(f"✓ Notion: {notion_url}")
+
+    logger.log_event("experiment_logged", {
+        "title": title,
+        "channel": channel,
+        "content_type": content_type,
+        "status": status,
+        "hypothesis": hypothesis[:200],
+    })
+
+    click.echo(f"\n✓ Experiment logged.")
+
+
+# ─────────────────────────────────────────────
+# FEEDBACK: Synthesize product feedback
+# ─────────────────────────────────────────────
+@cli.command()
+@click.option("--lookback", default=7, help="Days of audit log to analyze (default: 7)")
+@click.option("--no-notion", is_flag=True, help="Skip pushing to Notion")
+def feedback(lookback, no_notion):
+    """Synthesize product feedback from the audit log and push to Notion."""
+    from src.analysis.feedback_synthesizer import synthesize
+    from src.pipeline import notion_feedback, logger
+
+    click.echo(f"\nSynthesizing product feedback (last {lookback} days)...")
+    click.echo("─" * 60)
+
+    try:
+        items = synthesize(lookback_days=lookback)
+    except ValueError as e:
+        click.echo(f"ERROR: {e}", err=True)
+        sys.exit(1)
+
+    if not items:
+        click.echo("No feedback items generated.")
+        return
+
+    click.echo(f"\nGenerated {len(items)} feedback item(s):\n")
+    for i, item in enumerate(items, 1):
+        click.echo(f"[{i}] [{item.get('priority', 'Medium')}] {item.get('title', '')}")
+        click.echo(f"    Category: {item.get('category', '')}")
+        click.echo(f"    Evidence: {item.get('evidence', '')[:120]}...")
+
+        if not no_notion:
+            notion_url = notion_feedback.push_feedback(item)
+            if notion_url:
+                click.echo(f"    ✓ Notion: {notion_url}")
+
+    logger.log_event("feedback_report_generated", {
+        "lookback_days": lookback,
+        "items_count": len(items),
+        "categories": [item.get("category") for item in items],
+    })
+
+    click.echo(f"\n✓ Feedback report complete. {len(items)} item(s) submitted.")
 
 
 if __name__ == "__main__":

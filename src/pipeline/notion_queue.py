@@ -10,13 +10,17 @@ load_dotenv()
 
 SETUP_INSTRUCTIONS = """
 ╔══════════════════════════════════════════════════════════════════╗
-║         Notion Review Queue — Setup Instructions                 ║
+║              RC Dev — Notion Setup Instructions                  ║
 ╚══════════════════════════════════════════════════════════════════╝
 
-STEP 1: Create a Notion Integration
+═══════════════════════════════════
+DATABASE 1: Draft Review Queue
+═══════════════════════════════════
+
+STEP 1: Create a Notion Integration (one-time)
   → Go to: https://www.notion.so/my-integrations
   → Click "New integration"
-  → Name it: "RC Dev Review Queue"
+  → Name it: "RC Dev"
   → Copy the "Internal Integration Token" (starts with secret_...)
   → Add to .env: NOTION_API_KEY=secret_...
 
@@ -34,20 +38,84 @@ STEP 2: Create the Review Database
       • Timestamp    (type: Date)
       • Operator Notes (type: Text)
 
-STEP 3: Share the database with your integration
-  → Open the database page in Notion
-  → Click ··· (top right) → "Add connections"
-  → Search for "RC Dev Review Queue" and connect it
+STEP 3: Share with your integration
+  → Open the database → ··· (top right) → "Add connections" → "RC Dev"
 
 STEP 4: Get the Database ID
-  → Open the database in your browser
-  → The URL looks like: notion.so/workspace/XXXXXXXX...?v=...
-  → Copy the 32-character ID between the last / and the ?
+  → Open the database in browser; URL: notion.so/workspace/XXXXXXXX...?v=...
+  → Copy the 32-char ID between the last / and the ?
   → Add to .env: NOTION_DATABASE_ID=xxxxxxxx...
 
 STEP 5: Verify
   → Run: python -m src.cli draft --channel twitter --topic "test"
-  → Check Notion — a new row should appear with Status = "Pending Review"
+  → A new row should appear in Notion with Status = "Pending Review"
+
+═══════════════════════════════════
+DATABASE 2: Growth Experiments
+═══════════════════════════════════
+
+STEP 1: Create the Experiments Database
+  → In Notion, create a new page and add a full-page database
+  → Name it: "RC Dev — Growth Experiments"
+  → Add these properties (exact names matter):
+      • Title        (default — keep as-is)
+      • Hypothesis   (type: Text)
+      • Channel      (type: Select) options: twitter, stackoverflow, blog, reddit, discord, general
+      • Content Type (type: Select) options: A/B Test, SEO Content, Community Campaign, Paywall Experiment
+      • Status       (type: Select) options: Planned, Running, Complete, Cancelled
+      • Start Date   (type: Date)
+      • Results      (type: Text)
+      • Learnings    (type: Text)
+      • Draft ID     (type: Text)
+
+STEP 2: Share with your integration
+  → Open the database → ··· (top right) → "Add connections" → "RC Dev"
+
+STEP 3: Get the Database ID
+  → Copy the 32-char ID from the URL
+  → Add to .env: NOTION_EXPERIMENTS_DB_ID=xxxxxxxx...
+
+STEP 4: Verify
+  → Run: python -m src.cli experiment --title "Test" --hypothesis "Test" --channel twitter
+
+═══════════════════════════════════
+DATABASE 3: Product Feedback
+═══════════════════════════════════
+
+STEP 1: Create the Feedback Database
+  → In Notion, create a new page and add a full-page database
+  → Name it: "RC Dev — Product Feedback"
+  → Add these properties (exact names matter):
+      • Title          (default — keep as-is)
+      • Category       (type: Select) options: Doc Gap, Feature Request, UX Friction, Community Trend
+      • Priority       (type: Select) options: High, Medium, Low
+      • Evidence       (type: Text)
+      • Recommendation (type: Text)
+      • Status         (type: Select) options: New, Reviewed, Actioned
+      • Week           (type: Date)
+      • Source Channels (type: Text)
+
+STEP 2: Share with your integration
+  → Open the database → ··· (top right) → "Add connections" → "RC Dev"
+
+STEP 3: Get the Database ID
+  → Copy the 32-char ID from the URL
+  → Add to .env: NOTION_FEEDBACK_DB_ID=xxxxxxxx...
+
+STEP 4: Verify
+  → Run: python -m src.cli feedback --lookback 30
+  → Feedback items should appear in Notion
+
+═══════════════════════════════════
+.env Summary
+═══════════════════════════════════
+
+  ANTHROPIC_API_KEY=sk-ant-...
+  NOTION_API_KEY=secret_...
+  NOTION_DATABASE_ID=...         # Draft Review Queue
+  NOTION_EXPERIMENTS_DB_ID=...   # Growth Experiments
+  NOTION_FEEDBACK_DB_ID=...      # Product Feedback
+  OPERATOR_NAME=Rashad Gaines
 """
 
 
