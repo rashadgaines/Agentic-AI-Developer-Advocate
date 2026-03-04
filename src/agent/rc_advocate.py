@@ -31,6 +31,7 @@ class Draft:
     raw_response: str
     rag_chunks_used: int = 0
     operator_notes: str = ""
+    auto_approved: bool = False
     status: str = "PENDING REVIEW"
 
 

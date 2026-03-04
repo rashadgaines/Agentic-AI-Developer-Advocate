@@ -66,7 +66,13 @@ VALID_CHANNELS = ["twitter", "stackoverflow", "blog", "reddit", "discord", "gene
 @click.option("--context", default="", help="Optional extra context for the agent")
 @click.option("--save", is_flag=True, default=True, help="Save draft locally (default: true)")
 @click.option("--no-notion", is_flag=True, help="Skip pushing to Notion")
-def draft(channel, topic, context, save, no_notion):
+@click.option(
+    "--mode",
+    default="review",
+    type=click.Choice(["review", "auto"]),
+    help="review: all drafts → Notion queue. auto: HIGH confidence + no flags → auto-approved.",
+)
+def draft(channel, topic, context, save, no_notion, mode):
     """Generate a content draft and route to the review queue."""
     from src.agent.rc_advocate import RCAdvocate
     from src.pipeline import notion_queue, logger
@@ -91,6 +97,17 @@ def draft(channel, topic, context, save, no_notion):
         click.echo(f"⚠️  Review flags: {', '.join(result.review_flags)}")
     click.echo(f"Draft ID: {result.id}")
 
+    # Routing logic
+    if mode == "auto" and result.confidence == "HIGH" and not result.review_flags:
+        result.status = "AUTO-APPROVED"
+        result.auto_approved = True
+        click.echo("\n✓ AUTO-APPROVED — HIGH confidence, no flags.")
+    elif not no_notion:
+        click.echo("\nPushing to Notion review queue...")
+        notion_url = notion_queue.push_draft(result)
+        if notion_url:
+            click.echo(f"✓ Notion: {notion_url}")
+
     # Save locally
     if save:
         out_dir = Path("drafts")
@@ -106,20 +123,14 @@ def draft(channel, topic, context, save, no_notion):
             "review_flags": result.review_flags,
             "timestamp": result.timestamp,
             "status": result.status,
+            "auto_approved": result.auto_approved,
         }, indent=2))
         click.echo(f"Draft saved: {out_path}")
 
     # Audit log
     logger.log_draft(result)
 
-    # Push to Notion
-    if not no_notion:
-        click.echo("\nPushing to Notion review queue...")
-        notion_url = notion_queue.push_draft(result)
-        if notion_url:
-            click.echo(f"✓ Notion: {notion_url}")
-
-    click.echo("\n✓ Draft complete. Status: PENDING REVIEW")
+    click.echo(f"\n✓ Draft complete. Status: {result.status}")
 
 
 # ─────────────────────────────────────────────
