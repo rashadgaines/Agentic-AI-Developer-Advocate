@@ -16,6 +16,8 @@ build/
 # Internal docs
 docs/
 portfolio/
+*.md
+!README.md
 
 # Data (large files — regenerate with `python -m src.cli ingest`)
 data/docs/
@@ -26,6 +28,9 @@ drafts/
 
 # Logs (sensitive audit trail)
 logs/
+
+# Claude Code local settings
+.claude/
 
 # IDE
 .idea/
