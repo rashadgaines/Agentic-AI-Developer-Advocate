@@ -55,6 +55,22 @@ def print_setup_instructions() -> None:
     print(SETUP_INSTRUCTIONS)
 
 
+def _content_blocks(text: str) -> list[dict]:
+    """Split text into Notion paragraph blocks, respecting the 2000-char limit."""
+    chunk_size = 1999
+    blocks = []
+    for i in range(0, len(text), chunk_size):
+        blocks.append({
+            "object": "block",
+            "type": "paragraph",
+            "paragraph": {
+                "rich_text": [{"text": {"content": text[i:i + chunk_size]}}]
+            },
+        })
+    return blocks or [{"object": "block", "type": "paragraph",
+                       "paragraph": {"rich_text": [{"text": {"content": ""}}]}}]
+
+
 def push_draft(draft) -> str | None:
     """
     Push a Draft to the Notion review database.
@@ -75,8 +91,15 @@ def push_draft(draft) -> str | None:
     sources_str = ", ".join(draft.sources) if draft.sources else "none"
     flags_str = ", ".join(draft.review_flags) if draft.review_flags else "none"
 
-    # Truncate content for Notion title (max 2000 chars for title)
     title = f"[{draft.channel.upper()}] {draft.topic}"[:200]
+
+    children = [
+        {
+            "object": "block",
+            "type": "heading_2",
+            "heading_2": {"rich_text": [{"text": {"content": "Draft Content"}}]},
+        }
+    ] + _content_blocks(draft.content)
 
     page = client.pages.create(
         parent={"database_id": db_id},
@@ -106,24 +129,7 @@ def push_draft(draft) -> str | None:
                 "date": {"start": draft.timestamp}
             },
         },
-        children=[
-            {
-                "object": "block",
-                "type": "heading_2",
-                "heading_2": {
-                    "rich_text": [{"text": {"content": "Draft Content"}}]
-                },
-            },
-            {
-                "object": "block",
-                "type": "paragraph",
-                "paragraph": {
-                    "rich_text": [
-                        {"text": {"content": draft.content[:2000]}}
-                    ]
-                },
-            },
-        ],
+        children=children,
     )
 
     page_url = page.get("url", "")
