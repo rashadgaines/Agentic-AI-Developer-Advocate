@@ -1,0 +1,34 @@
+# Environment
+.env
+*.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Data (large files — regenerate with `python -m src.cli ingest`)
+data/docs/
+data/index/
+
+# Drafts (auto-generated, not source)
+drafts/
+
+# Logs (sensitive audit trail)
+logs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
